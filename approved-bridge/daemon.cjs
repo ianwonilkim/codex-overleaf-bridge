@@ -101,6 +101,9 @@ async function dispatchRpc(stateDir, body = {}) {
     const queued = Store.enqueuePolicyRegistration(stateDir, input);
     return maybeWait(stateDir, queued, input.waitMs === undefined ? DEFAULT_WAIT_MS : input.waitMs);
   }
+  if (action === 'set-paper-rules') {
+    return Store.setProjectPaperRules(stateDir, input);
+  }
   if (action === 'verify-policy') {
     return verifyCurrentPolicy(stateDir, input);
   }

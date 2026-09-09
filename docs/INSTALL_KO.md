@@ -16,21 +16,17 @@ Codex와 Chrome이 같은 Mac에서 실행되면 SSH는 필요 없습니다.
 
 저장소 README의 다운로드 링크에서 아래 두 파일을 `Downloads`에 받습니다.
 
-- `codex-overleaf-bridge-kit-20260909-r7.zip`
-- `codex-overleaf-bridge-kit-20260909-r7.zip.sha256`
+- `codex-overleaf-bridge-kit-20260909-r8.zip`
+- `codex-overleaf-bridge-kit-20260909-r8.zip.sha256`
 
 원하면 터미널에서 ZIP을 검증합니다.
 
 ```bash
 cd "$HOME/Downloads"
-shasum -a 256 -c codex-overleaf-bridge-kit-20260909-r7.zip.sha256
+shasum -a 256 -c codex-overleaf-bridge-kit-20260909-r8.zip.sha256
 ```
 
-`OK`가 나와야 합니다. 현재 정상 ZIP의 SHA256은 다음과 같습니다.
-
-```text
-f8959ec5085f3d67cf25dc927089ff622217e49e5fcb2d1b1e3908e34a5b9907
-```
+`OK`가 나와야 합니다.
 
 ### 2.2 설치 실행
 
@@ -41,7 +37,7 @@ f8959ec5085f3d67cf25dc927089ff622217e49e5fcb2d1b1e3908e34a5b9907
 그래도 열리지 않을 때만 터미널에서 실행합니다.
 
 ```bash
-bash "$HOME/Downloads/codex-overleaf-bridge-kit-20260909-r7/install.command"
+bash "$HOME/Downloads/codex-overleaf-bridge-kit-20260909-r8/install.command"
 ```
 
 설치기는 내부 checksum을 확인한 뒤 사용자 계정 아래에 확장 프로그램, Mac bridge,
@@ -65,7 +61,7 @@ bash "$HOME/Downloads/codex-overleaf-bridge-kit-20260909-r7/install.command"
 2. Codex에 다음 문장을 보냅니다.
 
 ```text
-이 Overleaf 프로젝트 연결해. 프로젝트 룰과 원본 템플릿은 보호해줘.
+이 Overleaf 프로젝트 연결해.
 ```
 
 브리지는 현재 프로젝트와 main document를 확인하고, 새 source snapshot을 읽어
@@ -76,7 +72,37 @@ project ID 입력은 필요 없습니다. main document 후보가 여러 개일 
 새 논문이나 초기 원고라면 실제 프로젝트를 바로 연결해도 됩니다. TEST 프로젝트는
 중요한 기존 원고에서 저장·undo를 먼저 연습하고 싶은 경우에만 선택적으로 씁니다.
 
-### 3.1 추천: 논문 하나당 메인 채팅 하나
+### 3.1 선택: 학회·저널 규칙도 프로젝트에 저장
+
+브리지를 단순 Overleaf 제어기로 쓸 때는 추가 설정이 없습니다. 논문 규격까지
+관리하고 싶을 때만 다음처럼 말합니다.
+
+```text
+이 프로젝트는 [학회/저널] [연도] [track] 논문이야.
+공식 저자 규정을 확인해서 핵심 규칙을 프로젝트별로 저장해줘.
+```
+
+Codex는 페이지, 익명성, 필수 문구, language/terminology, ethics/funding, PDF와
+제출 규칙을 요약하고 공식 출처와 확인 날짜를 함께 저장합니다. venue·연도·track이
+불명확할 때만 짧게 묻습니다. 이 프로필은 선택 사항이라서 없다고 쓰기가 차단되지는
+않습니다.
+
+규칙은 project ID별로 분리되고 나중에 추가·교체·삭제할 수 있습니다.
+
+```text
+이 프로젝트에 [새 규칙]을 프로젝트 규칙으로 추가해줘.
+```
+
+```text
+이 프로젝트의 논문 규칙 프로필을 지우고 연결만 사용하는 모드로 바꿔줘.
+```
+
+규칙 저장은 Overleaf 원문을 바꾸지 않습니다. 파일 해시로 직접 막는 template
+보호, compile/PDF로 확인하는 페이지 규칙, 제출 전 사람이 확인할 저자·윤리 규칙,
+공식 사이트를 다시 봐야 하는 deadline을 서로 구분해 기록합니다. 자세한 내용은
+[프로젝트별 논문 규칙](PROJECT_RULES_KO.md)을 참고하세요.
+
+### 3.2 추천: 논문 하나당 메인 채팅 하나
 
 여러 작업을 함께 볼 때는 ChatGPT 데스크톱 앱의 Codex 모드가 가장 편합니다.
 
@@ -152,7 +178,9 @@ checkpoint가 만들어진 것은 아닙니다.
 ## 6. 여러 논문과 업데이트
 
 다른 논문을 사용할 때는 그 Overleaf 탭을 열고 `이 프로젝트 연결해`라고 한 번
-말합니다. 프로젝트별 정책, template 기준선과 승인은 서로 섞이지 않습니다.
+말합니다. 프로젝트별 정책, 선택적인 논문 규칙, template 기준선과 승인은 서로
+섞이지 않습니다. 학회 규격이 필요 없는 프로젝트는 연결만 하고, 필요한 논문에만
+3.1절의 규칙 프로필을 추가합니다.
 
 새 배포판으로 업데이트할 때 기존 설치 전체를 지우지 않습니다.
 
@@ -166,7 +194,7 @@ checkpoint가 만들어진 것은 아닙니다.
 
 ```bash
 codex mcp remove overleaf-approved
-bash "$HOME/Downloads/codex-overleaf-bridge-kit-20260909-r7/install.command"
+bash "$HOME/Downloads/codex-overleaf-bridge-kit-20260909-r8/install.command"
 ```
 
 ## 7. Codex가 SSH 연구 서버에서 실행될 때만
@@ -177,7 +205,7 @@ Chrome은 Mac에 있고 Codex만 연구 서버에서 실행되는 경우입니�
 Mac에서 설치할 때 로컬 Codex 등록을 생략합니다.
 
 ```bash
-bash codex-overleaf-bridge-kit-20260909-r7/install.command --skip-codex-mcp
+bash codex-overleaf-bridge-kit-20260909-r8/install.command --skip-codex-mcp
 ```
 
 그다음 Mac의 MCP 어댑터와 token을 자신의 연구 서버 계정으로 복사하고 reverse

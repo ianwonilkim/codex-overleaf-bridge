@@ -21,6 +21,15 @@
   const SAFE_HASH = /^[a-f0-9]{64}$/;
   const SAFE_ERROR_CODE = /^[a-z][a-z0-9_]{2,100}$/;
   const SAFE_COMMAND = /^[A-Za-z@]+$/;
+  const SAFE_RULE_ID = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+  const SAFE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const PAPER_RULE_CHECKS = Object.freeze([
+    'advisory',
+    'compile_pdf',
+    'human_final',
+    'live_official',
+    'source_diff'
+  ]);
 
   const BODY_CONTROL_COMMANDS = Object.freeze([
     'documentclass', 'usepackage', 'RequirePackage',
@@ -82,7 +91,10 @@
     }
     const policyName = normalizeBoundedText(value.policyName, 'policy_name', 200);
     const policyRevision = normalizeBoundedText(value.policyRevision || '1', 'policy_revision', 100);
-    const policySourceSha256 = normalizeHash(value.policySourceSha256, 'policy_source_sha256');
+    const rawPolicySourceSha256 = String(value.policySourceSha256 || '').trim();
+    const policySourceSha256 = rawPolicySourceSha256
+      ? normalizeHash(rawPolicySourceSha256, 'policy_source_sha256')
+      : '';
     const mainDocument = normalizePath(value.mainDocument);
     const editablePathPatterns = normalizeStringArray(value.editablePathPatterns, 'editable_path_patterns', {
       min: 1,
@@ -126,13 +138,18 @@
     if (fingerprintVersion !== FINGERPRINT_VERSION) {
       throw policyError('invalid_fingerprint_version', `Policy fingerprintVersion must be ${FINGERPRINT_VERSION}.`);
     }
+    const paperRules = normalizePaperRuleProfile(value.paperRules);
+    const rawPaperRulesUpdateId = String(value.paperRulesUpdateId || '').trim();
+    if (rawPaperRulesUpdateId && !SAFE_UUID.test(rawPaperRulesUpdateId)) {
+      throw policyError('invalid_paper_rules_update_id', 'paperRulesUpdateId must be a UUID when supplied.');
+    }
     return {
       schemaVersion: POLICY_SCHEMA_VERSION,
       projectId,
       scope,
       policyName,
       policyRevision,
-      policySourceSha256,
+      ...(policySourceSha256 ? { policySourceSha256 } : {}),
       mainDocument,
       editablePathPatterns,
       protectedPaths,
@@ -140,7 +157,103 @@
       mutablePreambleCommands,
       allowedPreambleDirectives,
       integrityErrorCode,
-      fingerprintVersion: FINGERPRINT_VERSION
+      fingerprintVersion: FINGERPRINT_VERSION,
+      ...(paperRules ? { paperRules } : {}),
+      ...(rawPaperRulesUpdateId ? { paperRulesUpdateId: rawPaperRulesUpdateId.toLowerCase() } : {})
+    };
+  }
+
+  function normalizePaperRuleProfile(value) {
+    if (value === undefined || value === null) return null;
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      throw policyError('invalid_paper_rule_profile', 'paper_rule_profile must be an object when supplied.');
+    }
+    const name = normalizeBoundedText(value.name, 'paper_rule_profile_name', 200);
+    const revision = normalizeBoundedText(value.revision || '1', 'paper_rule_profile_revision', 100);
+    const reviewedAt = normalizeTimestamp(
+      value.reviewedAt === undefined ? value.reviewed_at : value.reviewedAt,
+      'paper_rule_profile_reviewed_at'
+    );
+    const sourceValues = value.officialSources === undefined
+      ? value.official_sources || []
+      : value.officialSources;
+    if (!Array.isArray(sourceValues) || sourceValues.length > 16) {
+      throw policyError('invalid_paper_rule_profile_sources', 'paper_rule_profile official_sources must contain at most 16 entries.');
+    }
+    const officialSources = sourceValues.map((source, index) => normalizePaperRuleSource(source, index))
+      .sort((left, right) => left.url.localeCompare(right.url) || left.label.localeCompare(right.label));
+    if (new Set(officialSources.map(source => source.url)).size !== officialSources.length) {
+      throw policyError('duplicate_paper_rule_profile_source', 'paper_rule_profile official_sources contains a duplicate URL.');
+    }
+    if (!Array.isArray(value.rules) || value.rules.length < 1 || value.rules.length > 64) {
+      throw policyError('invalid_paper_rule_profile_rules', 'paper_rule_profile rules must contain between 1 and 64 entries.');
+    }
+    const rules = value.rules.map((rule, index) => normalizePaperRule(rule, index))
+      .sort((left, right) => left.id.localeCompare(right.id));
+    if (new Set(rules.map(rule => rule.id)).size !== rules.length) {
+      throw policyError('duplicate_paper_rule_id', 'paper_rule_profile rules contains a duplicate rule ID.');
+    }
+    if (rules.some(rule => rule.checks.includes('live_official')) && !officialSources.length) {
+      throw policyError(
+        'paper_rule_source_required',
+        'A live_official rule requires at least one official source URL.'
+      );
+    }
+    const noteValues = value.notes || [];
+    if (!Array.isArray(noteValues) || noteValues.length > 32) {
+      throw policyError('invalid_paper_rule_profile_notes', 'paper_rule_profile notes must contain at most 32 entries.');
+    }
+    const notes = noteValues.map((note, index) => normalizeBoundedText(
+      note,
+      `paper_rule_profile_note_${index + 1}`,
+      500
+    ));
+    return { name, revision, reviewedAt, officialSources, rules, notes };
+  }
+
+  function normalizePaperRuleSource(value, index) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      throw policyError('invalid_paper_rule_profile_source', `paper_rule_profile official source ${index + 1} must be an object.`);
+    }
+    const label = normalizeBoundedText(value.label, `paper_rule_profile_source_label_${index + 1}`, 200);
+    const rawUrl = normalizeBoundedText(value.url, `paper_rule_profile_source_url_${index + 1}`, 2048);
+    let parsed;
+    try {
+      parsed = new URL(rawUrl);
+    } catch {
+      throw policyError('invalid_paper_rule_profile_source_url', 'Paper-rule source URLs must be valid HTTPS URLs.');
+    }
+    if (parsed.protocol !== 'https:' || parsed.username || parsed.password) {
+      throw policyError('invalid_paper_rule_profile_source_url', 'Paper-rule source URLs must be HTTPS and must not contain credentials.');
+    }
+    return { label, url: parsed.toString() };
+  }
+
+  function normalizePaperRule(value, index) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      throw policyError('invalid_paper_rule', `paper_rule_profile rule ${index + 1} must be an object.`);
+    }
+    const id = String(value.id || '').trim().toLowerCase();
+    if (!SAFE_RULE_ID.test(id)) {
+      throw policyError('invalid_paper_rule_id', 'Paper-rule IDs must be lowercase slugs of at most 64 characters.');
+    }
+    const requirement = normalizeBoundedText(value.requirement, `paper_rule_${id}_requirement`, 1000);
+    const checksValue = value.checks;
+    if (!Array.isArray(checksValue) || checksValue.length < 1 || checksValue.length > PAPER_RULE_CHECKS.length) {
+      throw policyError('invalid_paper_rule_checks', `Paper rule ${id} must have between 1 and ${PAPER_RULE_CHECKS.length} checks.`);
+    }
+    const checks = [...new Set(checksValue.map(check => String(check || '').trim()))].sort();
+    if (checks.some(check => !PAPER_RULE_CHECKS.includes(check))) {
+      throw policyError(
+        'invalid_paper_rule_check',
+        `Paper-rule checks must be one of: ${PAPER_RULE_CHECKS.join(', ')}.`
+      );
+    }
+    return {
+      id,
+      requirement,
+      checks,
+      required: value.required !== false
     };
   }
 
@@ -718,6 +831,7 @@
     matchPathPattern,
     normalizeDefinition,
     normalizeObservation,
+    normalizePaperRuleProfile,
     normalizePreambleDirective,
     normalizePolicyRecord,
     observeProject,

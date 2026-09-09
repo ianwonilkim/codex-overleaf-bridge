@@ -68,11 +68,11 @@ Private 저장소 접근 권한이 있는 사용자만 다운로드할 수 있�
 원한다면 같은 파일을 GitHub Release에도 추가할 수 있습니다.
 
 1. 저장소 오른쪽의 `Releases` → `Draft a new release`
-2. 새 tag `v2026.09.09-r7` 생성
-3. Release title: `Codex–Overleaf Bridge 20260909-r7`
+2. 새 tag `v2026.09.09-r8` 생성
+3. Release title: `Codex–Overleaf Bridge 20260909-r8`
 4. 로컬 `release-assets` 폴더의 다음 두 파일을 첨부
-   - `codex-overleaf-bridge-kit-20260909-r7.zip`
-   - `codex-overleaf-bridge-kit-20260909-r7.zip.sha256`
+   - `codex-overleaf-bridge-kit-20260909-r8.zip`
+   - `codex-overleaf-bridge-kit-20260909-r8.zip.sha256`
 5. `Set as the latest release`를 선택하고 Publish
 
 Release도 저장소가 Private인 동안 초대된 사용자에게만 보입니다. Release를 만들지

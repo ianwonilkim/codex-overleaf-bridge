@@ -14,7 +14,7 @@
 실행한다.
 
 ```bash
-bash "$HOME/Downloads/codex-overleaf-bridge-kit-20260909-r7/install.command"
+bash "$HOME/Downloads/codex-overleaf-bridge-kit-20260909-r8/install.command"
 ```
 
 설치기가 포함된 내부 파일의 checksum을 자동으로 검사하므로 일반 사용자가 build,
@@ -29,6 +29,16 @@ bash "$HOME/Downloads/codex-overleaf-bridge-kit-20260909-r7/install.command"
 
 끝이다. TEST, production 설정, project ID 입력, 활성화 명령은 필요 없다. 여러
 논문은 각 논문을 열고 한 번씩 연결하면 된다.
+
+학회·저널 규격까지 프로젝트별로 기억시키고 싶을 때만 다음처럼 추가한다.
+
+```text
+이 프로젝트는 [학회/저널] [연도] [track] 논문이야.
+공식 규정을 확인해서 프로젝트 규칙으로 저장해줘.
+```
+
+규칙은 선택 사항이다. 일반 Overleaf 제어 용도에는 넣지 않아도 되고 나중에
+추가·교체·삭제할 수 있다.
 
 외부 package, compiler 또는 template 구조를 바꿀 때만 Codex가 위험을 설명하고
 한 번 더 확인한다. 초록색 글자는 오류가 아니라 Overleaf Track Changes다.

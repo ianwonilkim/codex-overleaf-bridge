@@ -1,6 +1,8 @@
 # Overleaf 프로젝트별 논문 정책 템플릿
 
-이 파일을 각 논문 저장소 root에 복사하고 대괄호 항목을 채운다. 파일명 예:
+이 파일은 선택적인 팀 공유용 정책 문서다. 브리지를 단순 Overleaf 제어기로만 쓰는
+프로젝트는 만들지 않아도 된다. 학회·저널 규격이나 팀 규칙을 여러 사람·Mac에서
+공유하려면 각 논문 저장소 root에 복사하고 대괄호 항목을 채운다. 파일명 예:
 `OVERLEAF_PROJECT_POLICY_<PROJECT_ID>_<VENUE_YEAR>.md`.
 
 ## 1. 프로젝트 식별
@@ -50,6 +52,24 @@ support 파일은 가능한 한 실제 경로/hash로 지정한다.
 - mutable deadline/policy 최종 확인일: `[YYYY-MM-DD, TIMEZONE]`
 - 페이지·익명성·저자·윤리·PDF 규칙 요약: `[RULES]`
 
+### 4.1 구조화된 논문 규칙 프로필
+
+규칙이 필요 없으면 이 절 전체를 `NONE`으로 두고 bridge의
+`paper_rule_profile`을 생략한다. 규칙을 쓰면 아래 표를 채운다.
+
+- profile name: `[VENUE YEAR TRACK 또는 HOUSE RULE NAME]`
+- profile revision: `[REVISION]`
+- reviewed at: `[ISO-8601 UTC]`
+
+| rule ID | 정확한 요구사항 | 필수 여부 | 검사 방식 |
+|---|---|---:|---|
+| `[page-limit]` | `[REQUIREMENT]` | `[YES/NO]` | `[source_diff / compile_pdf / human_final / live_official / advisory]` |
+| `[anonymity]` | `[REQUIREMENT]` | `[YES/NO]` | `[CHECKS]` |
+
+`source_diff`는 LaTeX와 diff, `compile_pdf`는 compile/PDF, `human_final`은 제출 전
+사람 확인, `live_official`은 변경 가능한 공식 페이지 재확인, `advisory`는 문체·용어
+같은 작성 지침을 뜻한다. 한 규칙에 여러 방식을 지정할 수 있다.
+
 ## 5. 프로젝트 연결 시 자동으로 고정할 증거
 
 - 전체 source ZIP SHA-256: `[HASH]`
@@ -73,13 +93,14 @@ support 파일은 가능한 한 실제 경로/hash로 지정한다.
 | `project_id` | 원고의 24자리 project ID |
 | `policy_name` | 논문명 + venue/year + template lock |
 | `policy_revision` | 정책 채택일 또는 내부 revision |
-| `policy_source_sha256` | 채운 이 파일의 SHA-256 |
+| `policy_source_sha256` | 이 파일을 사용하는 경우 SHA-256; 파일이 없으면 생략 |
 | `main_document` | 실제 main document 경로 |
 | `editable_path_patterns` | 2절의 수정 가능한 text 경로 |
 | `protected_paths` | 실제 존재하는 원본 template support 파일 |
 | `protected_path_patterns` | 필요한 template 전용 pattern만 지정; 기본값은 빈 목록 |
 | `mutable_preamble_commands` | template 안에서 내용만 바꿀 author field 명령 |
 | `allowed_preamble_directives` | 사용자가 검토한 정확한 한 줄 package 선언; 기본 빈 목록 |
+| `paper_rule_profile` | 4.1절을 사용하는 경우 구조화된 규칙; 규칙 없이 연결만 할 때는 생략 |
 | `integrity_error_code` | 1절의 프로젝트별 hard rejection code |
 
 사용자가 `이 프로젝트 연결해`라고 요청하면 Codex가 연결 확인을 기록하고 이 입력을

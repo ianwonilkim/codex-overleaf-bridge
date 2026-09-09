@@ -1,5 +1,26 @@
 # Changelog
 
+## Approved lab bridge v6 - 2026-09-09
+
+### Added
+
+- Added an optional paper-rule profile stored independently for each Overleaf
+  project, including reviewed sources, versioned requirements, and explicit
+  source/PDF/human/live verification classes.
+- Added `overleaf_set_project_rules` so an already connected project can add,
+  replace, or clear its rule profile without editing Overleaf or reinstalling.
+- Added a project-rules guide and made the distinction between controller-only
+  use and venue-aware paper authoring explicit in the install and sharing docs.
+
+### Changed
+
+- Made a repository policy-document hash optional. The technical template
+  baseline remains verified and hash-bound even when a user only wants an
+  Overleaf controller with no venue rule profile.
+- Exposed the full optional rule profile only for an explicitly selected
+  project in status output, while keeping multi-project registry summaries
+  compact.
+
 ## Approved lab bridge v5 - 2026-09-09
 
 ### Changed

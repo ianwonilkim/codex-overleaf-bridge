@@ -55,6 +55,53 @@ function files(mainContent = main(), style = 'template-style-v1\n') {
   ];
 }
 
+function paperRuleProfile(overrides = {}) {
+  return {
+    name: 'ICASSP 2027 regular paper',
+    revision: '2026-09-09-v1',
+    reviewed_at: '2026-09-09T00:00:00.000Z',
+    official_sources: [{
+      label: 'Official paper kit',
+      url: 'https://example.org/paper-kit'
+    }],
+    rules: [{
+      id: 'page-limit',
+      requirement: 'Use at most four technical pages.',
+      checks: ['compile_pdf', 'human_final']
+    }],
+    notes: [],
+    ...overrides
+  };
+}
+
+test('paper-rule profiles are optional, normalized, and hash-bound when supplied', () => {
+  const controllerOnly = definition({ policySourceSha256: '' });
+  assert.equal('paperRules' in controllerOnly, false);
+  assert.equal('policySourceSha256' in controllerOnly, false);
+
+  const paper = definition({ paperRules: paperRuleProfile() });
+  assert.equal(paper.paperRules.name, 'ICASSP 2027 regular paper');
+  assert.equal(paper.paperRules.reviewedAt, '2026-09-09T00:00:00.000Z');
+  assert.deepEqual(paper.paperRules.rules[0].checks, ['compile_pdf', 'human_final']);
+  assert.notEqual(Policy.definitionMaterial(controllerOnly), Policy.definitionMaterial(paper));
+});
+
+test('paper-rule profiles reject unsafe or unverifiable entries', () => {
+  assert.throws(
+    () => definition({ paperRules: paperRuleProfile({
+      official_sources: [{ label: 'Unsafe', url: 'http://example.org/rules' }]
+    }) }),
+    error => error.code === 'invalid_paper_rule_profile_source_url'
+  );
+  assert.throws(
+    () => definition({ paperRules: paperRuleProfile({
+      official_sources: [],
+      rules: [{ id: 'deadline', requirement: 'Check the deadline.', checks: ['live_official'] }]
+    }) }),
+    error => error.code === 'paper_rule_source_required'
+  );
+});
+
 test('policy glob matching is segment-aware and rejects unsafe patterns', () => {
   assert.equal(Policy.matchPathPattern('spconf.sty', '**/*.sty'), true);
   assert.equal(Policy.matchPathPattern('vendor/template/spconf.sty', '**/*.sty'), true);

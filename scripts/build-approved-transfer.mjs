@@ -7,16 +7,16 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const outputDir = path.join(packageRoot, 'dist', 'approved-bridge-transfer-20260909-r7');
+const outputDir = path.join(packageRoot, 'dist', 'approved-bridge-transfer-20260909-r8');
 const markerName = '.approved-overleaf-transfer-output';
-const archiveName = 'overleaf-approved-bridge-installer-20260909-r7.tar.gz';
-const excludedTopLevel = new Set(['.git', 'node_modules', 'dist']);
+const archiveName = 'overleaf-approved-bridge-installer-20260909-r8.tar.gz';
+const excludedTopLevel = new Set(['.git', 'node_modules', 'dist', 'release-assets']);
 const excludedTopLevelPrefixes = ['OVERLEAF_PROJECT_POLICY_', 'VERIFICATION_'];
 
 function main() {
   prepareOutput();
   const stagingParent = fs.mkdtempSync(path.join(os.tmpdir(), 'overleaf-approved-transfer-'));
-  const stagingRoot = path.join(stagingParent, 'overleaf-approved-bridge-installer-20260909-r7');
+  const stagingRoot = path.join(stagingParent, 'overleaf-approved-bridge-installer-20260909-r8');
   try {
     fs.cpSync(packageRoot, stagingRoot, {
       recursive: true,
@@ -36,7 +36,7 @@ function main() {
       archiveBytes: fs.statSync(archivePath).size,
       sourceDigest,
       sourceFileCount: files.length,
-      approvedBridgeRevision: 'v5',
+      approvedBridgeRevision: 'v6',
       upstream: {
         repository: 'https://github.com/Ghqqqq/codex-overleaf-link',
         tag: 'v2.3.5',

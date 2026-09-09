@@ -7,12 +7,12 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const transferDir = path.join(packageRoot, 'dist', 'approved-bridge-transfer-20260909-r7');
-const outputDir = path.join(packageRoot, 'dist', 'codex-overleaf-bridge-kit-20260909-r7');
+const transferDir = path.join(packageRoot, 'dist', 'approved-bridge-transfer-20260909-r8');
+const outputDir = path.join(packageRoot, 'dist', 'codex-overleaf-bridge-kit-20260909-r8');
 const markerName = '.codex-overleaf-bridge-kit-output';
-const kitName = 'codex-overleaf-bridge-kit-20260909-r7';
+const kitName = 'codex-overleaf-bridge-kit-20260909-r8';
 const zipName = `${kitName}.zip`;
-const innerArchiveName = 'overleaf-approved-bridge-installer-20260909-r7.tar.gz';
+const innerArchiveName = 'overleaf-approved-bridge-installer-20260909-r8.tar.gz';
 
 function main() {
   run(process.execPath, [path.join(packageRoot, 'scripts', 'build-approved-transfer.mjs')]);
@@ -29,6 +29,8 @@ function main() {
     fs.chmodSync(path.join(kitRoot, 'install.command'), 0o755);
     copy('APPROVED_BRIDGE_SETUP_KO.md', 'APPROVED_BRIDGE_SETUP_KO.md');
     copy('APPROVED_BRIDGE_CONTRACT_KO.md', 'APPROVED_BRIDGE_CONTRACT_KO.md');
+    fs.mkdirSync(path.join(kitRoot, 'docs'), { recursive: true });
+    copy('docs/PROJECT_RULES_KO.md', 'docs/PROJECT_RULES_KO.md');
     fs.mkdirSync(path.join(kitRoot, 'approved-bridge'), { recursive: true });
     copy('approved-bridge/PROJECT_POLICY_TEMPLATE_KO.md', 'approved-bridge/PROJECT_POLICY_TEMPLATE_KO.md');
     copy('approved-bridge/codex-config.example.toml', 'approved-bridge/codex-config.example.toml');
@@ -40,7 +42,7 @@ function main() {
     const kitManifest = {
       schemaVersion: 1,
       kit: kitName,
-      approvedBridgeRevision: 'v5',
+      approvedBridgeRevision: 'v6',
       upstreamVersion: '2.3.5',
       writeAccessMode: 'automatic_after_verified_project_policy',
       supportedTopologies: ['same-mac', 'ssh-remote'],

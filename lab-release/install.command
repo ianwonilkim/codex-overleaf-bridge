@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 INSTALLER_DIR="$SCRIPT_DIR/installer"
-ARCHIVE_NAME="overleaf-approved-bridge-installer-20260909-r7.tar.gz"
+ARCHIVE_NAME="overleaf-approved-bridge-installer-20260909-r8.tar.gz"
 TEMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/codex-overleaf-install.XXXXXX")"
 trap 'rm -rf "$TEMP_ROOT"' EXIT
 
@@ -11,7 +11,7 @@ cd "$INSTALLER_DIR"
 shasum -a 256 -c SHA256SUMS
 tar -xzf "$ARCHIVE_NAME" -C "$TEMP_ROOT"
 
-node "$TEMP_ROOT/overleaf-approved-bridge-installer-20260909-r7/scripts/install-approved-bridge-macos.mjs" "$@"
+node "$TEMP_ROOT/overleaf-approved-bridge-installer-20260909-r8/scripts/install-approved-bridge-macos.mjs" "$@"
 
 if open -Ra "Google Chrome" >/dev/null 2>&1; then
   open -a "Google Chrome" "chrome://extensions"

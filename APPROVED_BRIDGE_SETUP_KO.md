@@ -13,7 +13,7 @@
 - Google Chrome
 - Node.js 20 이상
 - Codex 앱 또는 CLI
-- 배포 ZIP `codex-overleaf-bridge-kit-20260909-r7.zip`
+- 배포 ZIP `codex-overleaf-bridge-kit-20260909-r8.zip`
 
 ## 2. 같은 Mac에서 설치
 
@@ -27,7 +27,7 @@ Codex와 Chrome을 같은 Mac에서 사용한다면 이것이 기본 방법이�
 실행한다.
 
 ```bash
-bash "$HOME/Downloads/codex-overleaf-bridge-kit-20260909-r7/install.command"
+bash "$HOME/Downloads/codex-overleaf-bridge-kit-20260909-r8/install.command"
 ```
 
 설치기는 내부 checksum을 먼저 검증한 뒤 확장 프로그램, Mac bridge, 자동 실행
@@ -52,7 +52,7 @@ TEST 프로젝트는 필요 없다. 함께 제공되는 `.zip.sha256`은 배포 
 2. Codex에 다음처럼 말한다.
 
 ```text
-이 Overleaf 프로젝트 연결해. 프로젝트 룰과 원본 템플릿은 보호해줘.
+이 Overleaf 프로젝트 연결해.
 ```
 
 브리지는 자동으로 다음을 처리한다.
@@ -67,9 +67,22 @@ TEST 프로젝트는 필요 없다. 함께 제공되는 `.zip.sha256`은 배포 
 별도의 `productionEnabled=true`나 활성화 명령은 없다. 연결이 검증되면 바로 사용할
 수 있다. main document가 여러 개라 자동 판별할 수 없을 때만 Codex가 한 번 묻는다.
 
-ICASSP처럼 논문 저장소에 프로젝트별 정책 파일이 있으면 Codex가 그 정책을 읽고
-적용한다. 정책 파일이 없으면 연결 전에 허용할 본문 파일과 보호할 template 파일을
-간단히 확인한다.
+학회·저널 규칙은 선택 사항이다. 브리지를 일반 Overleaf 제어기로 쓰려면 여기서
+끝이다. 규격까지 관리할 프로젝트에서만 다음처럼 말한다.
+
+```text
+이 프로젝트는 [학회/저널] [연도] [track] 논문이야.
+공식 규정을 확인해서 프로젝트 규칙으로 저장해줘.
+```
+
+규칙 프로필은 project ID별로 저장되며 페이지, 익명성, 필수 문구, 언어·용어,
+ethics/funding, PDF와 제출 규칙 및 공식 출처 확인일을 포함할 수 있다. 규칙이 없다는
+이유로 연결이나 쓰기를 막지 않는다. 이미 연결한 뒤에도 추가·교체·삭제할 수 있다.
+자세한 구분은 [프로젝트별 논문 규칙](docs/PROJECT_RULES_KO.md)을 참고한다.
+
+ICASSP처럼 논문 저장소에 선택적인 프로젝트 정책 파일이 있으면 Codex가 그 정책을
+읽고 규칙 프로필과 연결할 수 있다. 정책 파일이 없으면 bridge가 기술적인 허용 파일과
+보호 template 기준선만 등록한다.
 
 ### 추천: 논문 하나당 메인 채팅 하나
 
@@ -139,8 +152,8 @@ Codex가 정확한 한 줄과 예상 영향을 보여 주면 사용자가 그 �
 2. 그 논문에서 `이 프로젝트 연결해`라고 한다.
 3. 이후 평소처럼 수정한다.
 
-각 논문의 정책과 기준선은 project ID별로 분리해 보관된다. 한 논문의 승인이나
-template 예외는 다른 논문에 적용되지 않는다.
+각 논문의 정책, 선택적인 규칙 프로필과 기준선은 project ID별로 분리해 보관된다.
+한 논문의 승인, 규칙이나 template 예외는 다른 논문에 적용되지 않는다.
 
 ## 7. TEST 프로젝트
 
@@ -154,7 +167,7 @@ Chrome은 Mac에 있고 Codex가 SSH 서버에서 실행될 때만 이 절이 �
 Mac에서는 다음처럼 설치해 로컬 Codex MCP 자동 등록을 건너뛴다.
 
 ```bash
-bash codex-overleaf-bridge-kit-20260909-r7/install.command --skip-codex-mcp
+bash codex-overleaf-bridge-kit-20260909-r8/install.command --skip-codex-mcp
 ```
 
 그다음 Mac의 MCP 어댑터와 token을 자신의 연구 서버 계정으로 복사하고 reverse

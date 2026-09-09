@@ -5,8 +5,8 @@
 Private GitHub 저장소의 Release에 다음 두 파일을 함께 올린다. 일반 사용자는 ZIP만
 받으면 되고, `.sha256`은 ZIP 자체를 검증할 때 쓴다.
 
-- `codex-overleaf-bridge-kit-20260909-r7.zip`
-- `codex-overleaf-bridge-kit-20260909-r7.zip.sha256`
+- `codex-overleaf-bridge-kit-20260909-r8.zip`
+- `codex-overleaf-bridge-kit-20260909-r8.zip.sha256`
 
 새 배포본은 기존 파일이나 tag를 덮어쓰지 않는다. token, cookie, 비공개 Overleaf
 링크와 논문 원문은 저장소나 지원 채널에 올리지 않는다.
@@ -21,8 +21,8 @@ Codex가 제안한 논문 변경을 확인한 뒤 Overleaf Track Changes로 적�
 
 배포 위치: <Private GitHub 저장소 링크>
 받을 파일:
-- codex-overleaf-bridge-kit-20260909-r7.zip
-- codex-overleaf-bridge-kit-20260909-r7.zip.sha256
+- codex-overleaf-bridge-kit-20260909-r8.zip
+- codex-overleaf-bridge-kit-20260909-r8.zip.sha256
 
 설치 후 사용법은 네 단계입니다.
 1) ZIP을 풀고 install.command 더블클릭
@@ -34,6 +34,10 @@ TEST/production 선택, project ID 입력과 별도 쓰기 활성화는 필요 �
 여러 논문은 각 프로젝트에서 한 번씩 연결하면 됩니다. 같은 Mac에서 Codex와
 Chrome을 쓰면 SSH도 필요 없습니다. Codex가 연구 서버에서 실행될 때만 포함된
 가이드의 SSH 절을 추가하세요.
+
+학회·저널 규격 프로필은 선택 사항입니다. 규격을 관리할 논문에서만 Codex에
+venue/year/track과 함께 “공식 규정을 확인해서 프로젝트 규칙으로 저장해줘”라고
+말하면 되고, 일반 Overleaf 제어 용도에는 넣지 않아도 됩니다.
 
 원본 학회 template은 자동으로 보호합니다. 외부 package나 template 변경은
 영향을 확인한 뒤 사용자가 다시 승인할 수 있습니다.

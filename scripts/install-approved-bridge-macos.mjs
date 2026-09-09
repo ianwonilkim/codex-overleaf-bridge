@@ -38,7 +38,7 @@ function main(argv = process.argv.slice(2)) {
     sourceRoot: path.join(packageRoot, 'extension'),
     targetRoot: extensionRoot,
     kind: 'extension',
-    version: '2.3.5-approved-bridge-v5'
+    version: '2.3.5-approved-bridge-v6'
   });
   installCompanionRuntime(companionRoot);
 
@@ -96,7 +96,7 @@ function main(argv = process.argv.slice(2)) {
       version: '2.3.5',
       commit: '4cbaff3b99a05625c4cca48ea4fabd4bcffc5a7d'
     },
-    approvedBridgeRevision: 'v5',
+    approvedBridgeRevision: 'v6',
     testProjectId: initializedConfig.testProjectId || '',
     writeAccessMode: 'automatic_after_verified_project_policy',
     extension: {
@@ -131,7 +131,7 @@ function installCompanionRuntime(targetRoot) {
   fs.copyFileSync(path.join(packageRoot, 'extension', 'src', 'shared', 'approvedBridgePolicy.js'), path.join(staging, 'extension', 'src', 'shared', 'approvedBridgePolicy.js'));
   fs.chmodSync(path.join(staging, 'approved-bridge', 'daemon.cjs'), 0o700);
   fs.chmodSync(path.join(staging, 'approved-bridge', 'mcp-server.cjs'), 0o700);
-  writeMarker(staging, 'companion', '6');
+  writeMarker(staging, 'companion', '7');
   replaceTree(targetRoot, staging);
 }
 

@@ -7,7 +7,7 @@ const path = require('node:path');
 const Policy = require('../../extension/src/shared/approvedBridgePolicy');
 
 const SCHEMA_VERSION = 1;
-const APPROVED_BRIDGE_REVISION = 'v5';
+const APPROVED_BRIDGE_REVISION = 'v6';
 const DEFAULT_PORT = 17381;
 const DEFAULT_PROPOSAL_TTL_MS = 30 * 60 * 1000;
 const MAX_TEXT_BYTES = 2 * 1024 * 1024;
@@ -142,6 +142,66 @@ function enqueuePolicyVerification(stateDir, input = {}) {
     projectId,
     payload: { policy, policyHash: policy.policyHash }
   })));
+}
+
+function setProjectPaperRules(stateDir, input = {}) {
+  const scope = normalizeScope(input.scope);
+  const projectId = normalizeProjectId(input.projectId);
+  const config = readConfig(stateDir);
+  if (scope === 'test') assertProjectConfigured(config, scope, projectId);
+  const operation = String(input.operation || '').trim();
+  if (!['set', 'clear'].includes(operation)) {
+    throw bridgeError('invalid_paper_rule_operation', 'Paper-rule operation must be set or clear.');
+  }
+  if (input.confirmed !== true) {
+    throw bridgeError('paper_rule_update_not_confirmed', 'The project paper-rule update was not explicitly confirmed.');
+  }
+  const requestedPaperRules = operation === 'set'
+    ? Policy.normalizePaperRuleProfile(input.paperRules)
+    : null;
+  if (operation === 'set' && !requestedPaperRules) {
+    throw bridgeError('paper_rule_profile_required', 'paper_rule_profile is required for the set operation.');
+  }
+  return withStateLock(stateDir, () => {
+    const current = getPolicyForProject(stateDir, scope, projectId, { required: true });
+    const currentPaperRules = current.definition.paperRules || null;
+    if (Policy.canonicalStringify(currentPaperRules) === Policy.canonicalStringify(requestedPaperRules)) {
+      return {
+        ok: true,
+        idempotent: true,
+        changedDocument: false,
+        operation,
+        policy: publicPolicy(current, { includePaperRules: true })
+      };
+    }
+    const definitionValue = { ...current.definition };
+    delete definitionValue.paperRules;
+    if (requestedPaperRules) definitionValue.paperRules = requestedPaperRules;
+    definitionValue.paperRulesUpdateId = crypto.randomUUID();
+    const definition = Policy.normalizeDefinition(definitionValue, { normalizePath: normalizeProjectPath });
+    const definitionHash = hashText(Policy.definitionMaterial(definition));
+    const policyHash = hashText(Policy.policyMaterial(definition, current.baseline));
+    const now = new Date().toISOString();
+    const record = {
+      schemaVersion: Policy.POLICY_SCHEMA_VERSION,
+      status: 'verified',
+      definition,
+      definitionHash,
+      policyHash,
+      baseline: current.baseline,
+      registeredAt: now,
+      lastVerifiedAt: current.lastVerifiedAt
+    };
+    persistPolicyRecord(stateDir, record);
+    return {
+      ok: true,
+      idempotent: false,
+      changedDocument: false,
+      operation,
+      previousPolicyHash: current.policyHash,
+      policy: publicPolicy(record, { includePaperRules: true })
+    };
+  });
 }
 
 function createProposalFromContents(stateDir, input = {}) {
@@ -445,7 +505,7 @@ function finalizePolicyJobResult(stateDir, job, submittedResult, completedAt) {
         ...submittedResult,
         ok: true,
         changedDocument: false,
-        policy: publicPolicy(record),
+        policy: publicPolicy(record, { includePaperRules: true }),
         definitionHash,
         policyHash,
         baseline
@@ -586,6 +646,11 @@ function getBridgeStatus(stateDir, options = {}) {
     ? getPolicyForProject(stateDir, 'test', config.testProjectId, { required: false, tolerateInvalid: true })
     : null;
   const productionPolicies = listRegisteredPolicies(stateDir, 'production');
+  const selectedProjectPolicy = projectId
+    ? (testPolicy?.definition.projectId === projectId
+        ? testPolicy
+        : productionPolicies.find(policy => policy.definition.projectId === projectId) || null)
+    : null;
   return {
     schemaVersion: SCHEMA_VERSION,
     approvedBridgeRevision: APPROVED_BRIDGE_REVISION,
@@ -600,7 +665,10 @@ function getBridgeStatus(stateDir, options = {}) {
       registry: {
         test: testPolicy ? publicPolicy(testPolicy) : null,
         production: productionPolicies.map(publicPolicy)
-      }
+      },
+      selectedProject: selectedProjectPolicy
+        ? publicPolicy(selectedProjectPolicy, { includePaperRules: true })
+        : null
     },
     queue: counts,
     heartbeat: projectId
@@ -736,21 +804,32 @@ function persistPolicyRecord(stateDir, recordValue) {
   ensurePrivateDirectory(historyDir);
   const historyFile = path.join(historyDir, `${record.policyHash}.json`);
   const existingHistory = readJson(historyFile, null);
-  if (existingHistory && JSON.stringify(existingHistory) !== JSON.stringify(record)) {
-    throw bridgeError('policy_history_collision', 'An immutable policy-history hash already exists with different content.');
+  if (existingHistory) {
+    let historical;
+    try {
+      historical = Policy.normalizePolicyRecord(existingHistory, { normalizePath: normalizeProjectPath });
+    } catch {
+      throw bridgeError('policy_history_collision', 'An immutable policy-history hash already exists but is invalid.');
+    }
+    if (historical.policyHash !== record.policyHash ||
+        Policy.policyMaterial(historical.definition, historical.baseline) !==
+          Policy.policyMaterial(record.definition, record.baseline)) {
+      throw bridgeError('policy_history_collision', 'An immutable policy-history hash already exists with different content.');
+    }
   }
   if (!existingHistory) atomicWriteJson(historyFile, record);
   atomicWriteJson(policyPath(stateDir, projectId), record);
 }
 
-function publicPolicy(policy) {
-  return {
+function publicPolicy(policy, options = {}) {
+  const paperRuleProfile = policy.definition.paperRules || null;
+  const result = {
     status: policy.status,
     projectId: policy.definition.projectId,
     scope: policy.definition.scope,
     policyName: policy.definition.policyName,
     policyRevision: policy.definition.policyRevision,
-    policySourceSha256: policy.definition.policySourceSha256,
+    policySourceSha256: policy.definition.policySourceSha256 || '',
     mainDocument: policy.definition.mainDocument,
     allowedPreambleDirectives: policy.definition.allowedPreambleDirectives,
     protectedFileCount: policy.baseline.protectedFiles.length,
@@ -759,8 +838,17 @@ function publicPolicy(policy) {
     mainStructureFingerprint: policy.baseline.mainStructureFingerprint,
     protectedPathSetSha256: policy.baseline.protectedPathSetSha256,
     registeredAt: policy.registeredAt,
-    lastVerifiedAt: policy.lastVerifiedAt
+    lastVerifiedAt: policy.lastVerifiedAt,
+    paperRulesConfigured: Boolean(paperRuleProfile),
+    paperRulesHash: paperRuleProfile
+      ? hashText(Policy.canonicalStringify(paperRuleProfile))
+      : '',
+    paperRulesEnforcement: paperRuleProfile
+      ? 'codex_compile_and_author_checks'
+      : 'none'
   };
+  if (options.includePaperRules) result.paperRuleProfile = paperRuleProfile;
+  return result;
 }
 
 function assertApprovalPhrase(config, scope, action, value) {
@@ -1079,5 +1167,6 @@ module.exports = {
   normalizeText,
   readConfig,
   removeTransientJob,
+  setProjectPaperRules,
   updateConfig
 };

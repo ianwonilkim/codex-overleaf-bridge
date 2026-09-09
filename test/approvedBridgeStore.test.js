@@ -199,6 +199,127 @@ test('verified policy registry supports production papers without a test slot or
   );
 });
 
+test('optional paper rules can be added, read by project ID, replaced, and cleared without editing Overleaf', async t => {
+  const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'approved-overleaf-paper-rules-'));
+  t.after(() => fs.rmSync(stateDir, { recursive: true, force: true }));
+  Store.initializeState({ stateDir });
+  const productionProjectId = 'fedcba0987654321fedcba09';
+  const initial = await registerPolicy(stateDir, productionProjectId);
+  assert.equal(Store.getBridgeStatus(stateDir, { projectId: productionProjectId }).policy.selectedProject.paperRulesConfigured, false);
+  const preRulesProposal = Store.createProposalFromContents(stateDir, {
+    scope: 'production',
+    projectId: productionProjectId,
+    path: 'Template.tex',
+    beforeContent: paperMain(),
+    afterContent: paperMain('Before rules changed'),
+    policyVerification: {
+      verified: true,
+      policyHash: initial.policyHash,
+      observedAt: new Date().toISOString()
+    }
+  });
+
+  const paperRules = {
+    name: 'ExampleConf 2027 main track',
+    revision: '2026-09-09-v1',
+    reviewedAt: '2026-09-09T00:00:00.000Z',
+    officialSources: [{ label: 'Official author guide', url: 'https://example.org/authors' }],
+    rules: [{
+      id: 'page-limit',
+      requirement: 'The compiled paper must fit the stated page limit.',
+      checks: ['compile_pdf', 'human_final'],
+      required: true
+    }],
+    notes: []
+  };
+  const added = Store.setProjectPaperRules(stateDir, {
+    scope: 'production',
+    projectId: productionProjectId,
+    operation: 'set',
+    paperRules,
+    confirmed: true
+  });
+  assert.equal(added.ok, true);
+  assert.equal(added.changedDocument, false);
+  assert.notEqual(added.policy.policyHash, initial.policyHash);
+  assert.equal(added.policy.paperRuleProfile.name, paperRules.name);
+  const repeated = Store.setProjectPaperRules(stateDir, {
+    scope: 'production',
+    projectId: productionProjectId,
+    operation: 'set',
+    paperRules,
+    confirmed: true
+  });
+  assert.equal(repeated.idempotent, true);
+  assert.equal(repeated.policy.policyHash, added.policy.policyHash);
+
+  const selected = Store.getBridgeStatus(stateDir, { projectId: productionProjectId }).policy.selectedProject;
+  assert.equal(selected.paperRulesConfigured, true);
+  assert.equal(selected.paperRuleProfile.rules[0].id, 'page-limit');
+  assert.equal(selected.paperRulesHash.length, 64);
+
+  const cleared = Store.setProjectPaperRules(stateDir, {
+    scope: 'production',
+    projectId: productionProjectId,
+    operation: 'clear',
+    confirmed: true
+  });
+  assert.equal(cleared.ok, true);
+  assert.equal(cleared.policy.paperRulesConfigured, false);
+  assert.equal(cleared.policy.paperRuleProfile, null);
+  assert.notEqual(cleared.policy.policyHash, initial.policyHash);
+  assert.ok(fs.readdirSync(path.join(stateDir, 'policy-history', productionProjectId)).length >= 3);
+  assert.throws(
+    () => Store.enqueueApply(stateDir, {
+      approvalId: preRulesProposal.approvalId,
+      approvalText: Store.PRODUCTION_WRITE_PHRASE
+    }),
+    error => error.code === 'project_policy_changed_after_preview'
+  );
+});
+
+test('paper-rule updates require confirmation and invalidate already previewed diffs', async () => {
+  const { stateDir, testProjectId } = fixture();
+  const initial = await registerPolicy(stateDir, testProjectId, 'test');
+  const proposal = Store.createProposalFromContents(stateDir, {
+    scope: 'test',
+    projectId: testProjectId,
+    path: 'Template.tex',
+    beforeContent: paperMain(),
+    afterContent: paperMain('Proposed'),
+    policyVerification: {
+      verified: true,
+      policyHash: initial.policyHash,
+      observedAt: new Date().toISOString()
+    }
+  });
+  const input = {
+    scope: 'test',
+    projectId: testProjectId,
+    operation: 'set',
+    paperRules: {
+      name: 'House style',
+      revision: '1',
+      reviewedAt: '2026-09-09T00:00:00.000Z',
+      officialSources: [],
+      rules: [{ id: 'terminology', requirement: 'Use the shared terminology.', checks: ['advisory'] }],
+      notes: []
+    }
+  };
+  assert.throws(
+    () => Store.setProjectPaperRules(stateDir, input),
+    error => error.code === 'paper_rule_update_not_confirmed'
+  );
+  Store.setProjectPaperRules(stateDir, { ...input, confirmed: true });
+  assert.throws(
+    () => Store.enqueueApply(stateDir, {
+      approvalId: proposal.approvalId,
+      approvalText: Store.TEST_APPROVAL_PHRASE
+    }),
+    error => error.code === 'project_policy_changed_after_preview'
+  );
+});
+
 test('policy re-registration invalidates a previously previewed approval ID', async () => {
   const { stateDir, testProjectId } = fixture();
   const first = await registerPolicy(stateDir, testProjectId, 'test');

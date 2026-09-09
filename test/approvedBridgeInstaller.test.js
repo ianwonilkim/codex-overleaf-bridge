@@ -20,7 +20,7 @@ test('installer is project-agnostic and has no production enable switch', t => {
   assert.equal(result.status, 0, result.stderr || result.stdout);
   const output = JSON.parse(result.stdout);
   assert.equal(output.ok, true);
-  assert.equal(output.approvedBridgeRevision, 'v5');
+  assert.equal(output.approvedBridgeRevision, 'v6');
   assert.equal(output.testProjectId, '');
   assert.equal(output.writeAccessMode, 'automatic_after_verified_project_policy');
   assert.equal('productionProjectId' in output, false);
@@ -71,6 +71,36 @@ test('project-agnostic reinstall preserves an optional test slot', t => {
   assert.equal(reinstall.status, 0, reinstall.stderr || reinstall.stdout);
   const output = JSON.parse(reinstall.stdout);
   assert.equal(output.testProjectId, projectId);
+});
+
+test('upgrade install preserves project policies, receipts, and policy history', t => {
+  const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'approved-overleaf-installer-state-'));
+  t.after(() => fs.rmSync(fakeHome, { recursive: true, force: true }));
+  const first = runInstaller(fakeHome, [
+    '--allow-non-darwin',
+    '--no-launch'
+  ]);
+  assert.equal(first.status, 0, first.stderr || first.stdout);
+
+  const stateDir = path.join(fakeHome, '.codex-overleaf', 'approved-bridge-v1');
+  const sentinels = [
+    path.join(stateDir, 'policies', 'sentinel.json'),
+    path.join(stateDir, 'policy-history', 'sentinel.json'),
+    path.join(stateDir, 'receipts', 'sentinel.json')
+  ];
+  for (const file of sentinels) {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, '{"preserve":true}\n', 'utf8');
+  }
+
+  const upgrade = runInstaller(fakeHome, [
+    '--allow-non-darwin',
+    '--no-launch'
+  ]);
+  assert.equal(upgrade.status, 0, upgrade.stderr || upgrade.stdout);
+  for (const file of sentinels) {
+    assert.equal(fs.readFileSync(file, 'utf8'), '{"preserve":true}\n');
+  }
 });
 
 test('removed production configuration flags are rejected instead of creating stale state', () => {

@@ -7,13 +7,46 @@ const path = require('node:path');
 const readline = require('node:readline');
 
 const SERVER_NAME = 'overleaf-approved-bridge';
-const SERVER_VERSION = '1.3.0';
+const SERVER_VERSION = '1.4.0';
 const DEFAULT_URL = 'http://127.0.0.1:17381';
+
+const PAPER_RULE_PROFILE_SCHEMA = objectSchema({
+  name: { type: 'string', minLength: 1, maxLength: 200, description: 'Human-readable venue, year, and track or a custom rule-set name.' },
+  revision: { type: 'string', minLength: 1, maxLength: 100 },
+  reviewed_at: { type: 'string', format: 'date-time', description: 'ISO-8601 UTC time when this exact rule summary was reviewed.' },
+  official_sources: {
+    type: 'array',
+    maxItems: 16,
+    default: [],
+    items: objectSchema({
+      label: { type: 'string', minLength: 1, maxLength: 200 },
+      url: { type: 'string', format: 'uri', maxLength: 2048 }
+    }, ['label', 'url'])
+  },
+  rules: {
+    type: 'array',
+    minItems: 1,
+    maxItems: 64,
+    items: objectSchema({
+      id: { type: 'string', pattern: '^[a-z0-9][a-z0-9._-]{0,63}$' },
+      requirement: { type: 'string', minLength: 1, maxLength: 1000 },
+      checks: {
+        type: 'array',
+        minItems: 1,
+        maxItems: 5,
+        uniqueItems: true,
+        items: { type: 'string', enum: ['advisory', 'compile_pdf', 'human_final', 'live_official', 'source_diff'] }
+      },
+      required: { type: 'boolean', default: true }
+    }, ['id', 'requirement', 'checks'])
+  },
+  notes: { type: 'array', maxItems: 32, default: [], items: { type: 'string', minLength: 1, maxLength: 500 } }
+}, ['name', 'revision', 'reviewed_at', 'rules']);
 
 const TOOLS = Object.freeze([
   {
     name: 'overleaf_status',
-    description: 'Read the approval bridge, queue, and active Overleaf extension heartbeat status. This never edits Overleaf.',
+    description: 'Read the approval bridge, queue, active Overleaf extension heartbeat, and policy.selectedProject.paperRuleProfile for project_id when configured. Call with project_id before planning a paper edit. This never edits Overleaf.',
     inputSchema: objectSchema({
       project_id: { type: 'string', description: 'Optional Overleaf project ID whose heartbeat should be returned.' }
     }),
@@ -21,28 +54,41 @@ const TOOLS = Object.freeze([
   },
   {
     name: 'overleaf_connect_project',
-    description: 'Connect an Overleaf paper for writing by capturing and verifying its project-specific protected-file and main-structure baseline. Call only after the user explicitly asks to connect this project. The connection changes private Mac bridge state but never edits Overleaf; once it succeeds there is no separate production-enable switch.',
+    description: 'Connect an Overleaf project for writing by capturing and verifying its project-specific protected-file and main-structure baseline. An optional paper_rule_profile stores venue or house rules by project ID; omit it for controller-only use. Call only after the user explicitly asks to connect this project. The connection changes private Mac bridge state but never edits Overleaf; once it succeeds there is no separate production-enable switch.',
     inputSchema: objectSchema({
       scope: { type: 'string', enum: ['test', 'production'], default: 'production' },
       project_id: { type: 'string' },
       policy_name: { type: 'string' },
       policy_revision: { type: 'string' },
-      policy_source_sha256: { type: 'string', description: 'SHA-256 of the reviewed repository project-policy document.' },
+      policy_source_sha256: { type: 'string', description: 'Optional SHA-256 of a reviewed repository project-policy document. Omit when no shared policy document is used.' },
       main_document: { type: 'string' },
       editable_path_patterns: { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: 128 },
       protected_paths: { type: 'array', items: { type: 'string' }, maxItems: 256, default: [] },
       protected_path_patterns: { type: 'array', items: { type: 'string' }, maxItems: 128, default: [] },
       mutable_preamble_commands: { type: 'array', items: { type: 'string' }, maxItems: 64, default: ['title', 'author', 'name', 'address', 'date', 'thanks'] },
       allowed_preamble_directives: { type: 'array', items: { type: 'string' }, maxItems: 64, default: [], description: 'Exact one-line usepackage or RequirePackage directives reviewed by the user. Options and package names are matched exactly after whitespace normalization.' },
+      paper_rule_profile: { ...PAPER_RULE_PROFILE_SCHEMA, description: 'Optional project-specific venue, journal, or house-rule profile. These rules guide Codex and final checks; only the separate template baseline is enforced directly by the bridge.' },
       integrity_error_code: { type: 'string', default: 'project_template_integrity_violation' },
       confirm_connection: { type: 'boolean', const: true, description: 'True only when the user explicitly asked to connect this project.' },
       external_module_approval_text: { type: 'string', description: 'Required when allowed_preamble_directives is non-empty. Exact phrase: 확인, Overleaf 외부 모듈 정책을 등록해줘' },
       wait_seconds: { type: 'number', minimum: 1, maximum: 120, default: 75 }
     }, [
-      'scope', 'project_id', 'policy_name', 'policy_revision', 'policy_source_sha256',
+      'scope', 'project_id', 'policy_name', 'policy_revision',
       'main_document', 'editable_path_patterns', 'confirm_connection'
     ]),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true }
+  },
+  {
+    name: 'overleaf_set_project_rules',
+    description: 'Add, replace, or clear the optional paper-rule profile for an already connected project. This updates private project-keyed bridge state, preserves immutable policy history, invalidates older pending diffs, and never edits Overleaf. Use set only after reviewing the exact rules and sources; use clear when the user wants controller-only mode.',
+    inputSchema: objectSchema({
+      scope: { type: 'string', enum: ['test', 'production'], default: 'production' },
+      project_id: { type: 'string' },
+      operation: { type: 'string', enum: ['set', 'clear'] },
+      paper_rule_profile: PAPER_RULE_PROFILE_SCHEMA,
+      confirm_update: { type: 'boolean', const: true, description: 'True only when the user explicitly asked to save, replace, or clear this project rule profile.' }
+    }, ['scope', 'project_id', 'operation', 'confirm_update']),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false }
   },
   {
     name: 'overleaf_verify_project_policy',
@@ -56,7 +102,7 @@ const TOOLS = Object.freeze([
   },
   {
     name: 'overleaf_preview_diff',
-    description: 'Read the current allowlisted Overleaf text file, compute an exact one-file diff, and create a short-lived one-time approval ID. This does not write.',
+    description: 'Read the current allowlisted Overleaf text file, compute an exact one-file diff, and create a short-lived one-time approval ID. Before planning a paper change, read overleaf_status(project_id) and apply any optional paperRuleProfile; this bridge call validates the technical template baseline but cannot itself prove semantic venue compliance. This does not write.',
     inputSchema: objectSchema({
       scope: { type: 'string', enum: ['test', 'production'] },
       project_id: { type: 'string' },
@@ -137,7 +183,7 @@ async function dispatch(method, params) {
       protocolVersion: normalizeProtocolVersion(params.protocolVersion),
       capabilities: { tools: { listChanged: false } },
       serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
-      instructions: 'Connecting a project captures a fresh source-ZIP baseline and immediately makes that verified project write-ready. There is no separate production-enable switch. Preview verifies the baseline; apply/compile/undo remain one-diff approval-gated and policy-checked.'
+      instructions: 'Connecting a project captures a fresh source-ZIP baseline and immediately makes that verified project write-ready. A venue/journal paper-rule profile is optional: omit it for controller-only use, or store it per project at connect time or later. Before planning a paper edit, call overleaf_status with project_id and follow any returned paperRuleProfile. Paper rules marked source_diff, compile_pdf, human_final, or live_official require the corresponding check; the bridge directly enforces only its technical template baseline. There is no separate production-enable switch. Preview verifies the baseline; apply/compile/undo remain one-diff approval-gated and policy-checked.'
     };
   }
   if (method === 'ping') return {};
@@ -170,8 +216,18 @@ async function callTool(name, args) {
         protectedPathPatterns: args.protected_path_patterns,
         mutablePreambleCommands: args.mutable_preamble_commands,
         allowedPreambleDirectives: args.allowed_preamble_directives,
+        paperRules: args.paper_rule_profile,
         integrityErrorCode: args.integrity_error_code
       }
+    };
+  } else if (name === 'overleaf_set_project_rules') {
+    action = 'set-paper-rules';
+    input = {
+      scope: args.scope || 'production',
+      projectId: args.project_id,
+      operation: args.operation,
+      paperRules: args.paper_rule_profile,
+      confirmed: args.confirm_update === true
     };
   } else if (name === 'overleaf_verify_project_policy') {
     action = 'verify-policy';

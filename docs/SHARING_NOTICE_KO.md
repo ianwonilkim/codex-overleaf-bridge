@@ -10,7 +10,7 @@ Codex가 제안한 논문 변경을 확인한 뒤 Overleaf Track Changes로 적�
 
 비공개 저장소: <GitHub Private 저장소 URL>
 설치 안내: 저장소 README.md
-현재 버전: 20260909-r7
+현재 버전: 20260909-r8
 
 처음 사용할 때:
 1) GitHub 초대 수락
@@ -23,6 +23,10 @@ Codex가 제안한 논문 변경을 확인한 뒤 Overleaf Track Changes로 적�
 TEST/production 선택, project ID 입력, npm build는 필요 없습니다. 같은 Mac에서
 Codex와 Chrome을 쓰면 SSH도 필요 없습니다. Codex가 연구 서버에서 실행될 때만
 매뉴얼의 SSH 절을 따르세요.
+
+학회·저널 규격을 함께 관리할 논문에서는 “이 프로젝트는 <venue/year/track>
+논문이야. 공식 규정을 확인해서 프로젝트 규칙으로 저장해줘”라고 추가하면 됩니다.
+이 규칙 기능은 선택 사항이며 일반 Overleaf 제어에는 필요 없습니다.
 
 중요:
 - diff를 확인하기 전에는 반영하지 마세요.

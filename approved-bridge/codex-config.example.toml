@@ -13,12 +13,15 @@ tool_timeout_sec = 180
 enabled = true
 required = false
 default_tools_approval_mode = "writes"
-enabled_tools = ["overleaf_status", "overleaf_connect_project", "overleaf_verify_project_policy", "overleaf_preview_diff", "overleaf_apply_approved", "overleaf_compile", "overleaf_undo"]
+enabled_tools = ["overleaf_status", "overleaf_connect_project", "overleaf_set_project_rules", "overleaf_verify_project_policy", "overleaf_preview_diff", "overleaf_apply_approved", "overleaf_compile", "overleaf_undo"]
 
 [mcp_servers.overleaf-approved.tools.overleaf_status]
 approval_mode = "auto"
 
 [mcp_servers.overleaf-approved.tools.overleaf_connect_project]
+approval_mode = "approve"
+
+[mcp_servers.overleaf-approved.tools.overleaf_set_project_rules]
 approval_mode = "approve"
 
 [mcp_servers.overleaf-approved.tools.overleaf_verify_project_policy]
