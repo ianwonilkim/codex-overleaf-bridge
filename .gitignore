@@ -1,0 +1,31 @@
+.DS_Store
+.local/
+.env
+.env.*
+*.log
+node_modules/
+dist/
+native-host/bin/
+extension/src/content/generated/
+build/
+*.crx
+*.p12
+*.sqlite
+scripts/npm-package-files-v*.txt
+.claude/
+.superpowers/
+
+# Versioned, verified installer ZIPs in release-assets are intentionally tracked.
+
+# Never commit local bridge state or credentials.
+**/token
+**/Cookies
+**/Cookies-journal
+**/*.pem
+**/*.key
+private/
+
+# Do not commit paper/project data.
+*overleaf*source*.zip
+*project-policy*.json
+*checkpoint*/

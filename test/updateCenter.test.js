@@ -1,0 +1,83 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const test = require('node:test');
+
+const repoRoot = path.resolve(__dirname, '..');
+const read = relativePath => fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
+
+test('Overleaf tab exposes the persistent staged update experience', () => {
+  const notice = read('extension/src/content/updateNotice.js');
+
+  assert.match(notice, /waiting_for_idle/);
+  assert.match(notice, /codex-update-notice-progress/);
+  assert.match(notice, /role', 'progressbar'/);
+  assert.match(notice, /Update in progress/);
+  assert.match(notice, /state === 'committed'/);
+  assert.match(notice, /id: 'dismiss'/);
+});
+
+test('Overleaf update notice restores persisted progress after managed restarts', () => {
+  const source = read('extension/src/content/updateNotice.js');
+
+  assert.match(source, /consent-update-get-state/);
+  assert.match(source, /consent-update-check/);
+  assert.match(source, /consent-update-install/);
+  assert.match(source, /consent-update-later/);
+  assert.match(source, /consent-update-dismiss/);
+  assert.match(source, /consent-update-state/);
+});
+
+test('Overleaf update actions stay in the current tab and never create an update window', () => {
+  const notice = read('extension/src/content/updateNotice.js');
+  const coordinator = read('extension/src/backgroundUpdateCoordinator.js');
+
+  assert.match(notice, /install: 'codex-overleaf\/consent-update-install'/);
+  assert.match(notice, /retry: 'codex-overleaf\/consent-update-check'/);
+  assert.doesNotMatch(notice, /consent-update-open-center/);
+  assert.doesNotMatch(coordinator, /function openUpdateCenter/);
+  assert.doesNotMatch(coordinator, /bootstrap\/update\.html/);
+  assert.doesNotMatch(coordinator, /chrome\.windows\.create/);
+});
+
+test('failed managed updates stop progress and expose an actionable recovery command', () => {
+  const notice = read('extension/src/content/updateNotice.js');
+  const bootstrap = read('extension/bootstrap/background.js');
+  const background = read('extension/src/background.js');
+  const coordinator = read('extension/src/backgroundUpdateCoordinator.js');
+
+  assert.match(notice, /codex-overleaf-link@\$\{version\} -- install-managed/);
+  assert.match(notice, /update_recovery_timeout/);
+  assert.match(notice, /id: 'copy-manual'/);
+  assert.match(bootstrap, /initializeBootstrap\(\)\.catch\(async error => \{\s*await setUpdateState\(\{ state: 'failed'/);
+  assert.match(bootstrap, /method: 'update\.status'/);
+  assert.match(bootstrap, /transaction\?\.state === 'awaiting_health'[\s\S]*confirmPendingUpdate\(transaction\)/);
+  assert.match(bootstrap, /async function rollbackBrokenRuntime\(error\)[\s\S]*state: 'failed'/);
+  assert.match(coordinator, /transaction\?\.state === 'awaiting_health'[\s\S]*method: 'update\.rollback'|requestNative\('update\.rollback'/);
+  assert.match(coordinator, /code: 'update_health_timeout'/);
+  assert.match(coordinator, /state: 'failed'/);
+  assert.match(background, /managedUpdateExecutionLocked/);
+  assert.match(background, /background_execution_pending/);
+  assert.match(coordinator, /CodexOverleafManagedUpdateExecutor[\s\S]*installAuthorizedUpdate/);
+});
+
+test('consent updater checks once at browser or extension startup without changing periodic checks', () => {
+  const coordinator = read('extension/src/backgroundUpdateCoordinator.js');
+
+  assert.match(coordinator, /STARTUP_CHECK_SESSION_KEY/);
+  assert.match(coordinator, /chrome\.storage\?\.session/);
+  assert.match(coordinator, /if \(await claimStartupCheck\(\)\)/);
+  assert.match(coordinator, /enqueuePolicyAction\(\(\) => checkOnly\(\{ manual: false \}\)\)/);
+  assert.match(coordinator, /delayInMinutes:\s*0\.5/);
+  assert.match(coordinator, /periodInMinutes:\s*CHECK_INTERVAL_MINUTES/);
+});
+
+test('managed updater preserves authorized candidates across ETag 304 and re-verifies staged bytes before apply', () => {
+  const updater = read('native-host/src/updateManager.js');
+  assert.match(updater, /releaseResponse\.status === 304[\s\S]*CANDIDATE_FILE[\s\S]*available: true/);
+  assert.match(updater, /bundleSha256: manifest\.updateBundle\.sha256/);
+  assert.match(updater, /const verifiedPayloadRoot = path\.join\(journal\.stageRoot, 'payload-apply'\)/);
+  assert.match(updater, /verifyStagedArchive\(journal\)/);
+  assert.match(updater, /extractVerifiedUpdateBundle\(\{\s*archivePath: journal\.archivePath,\s*destinationRoot: verifiedPayloadRoot/);
+  assert.match(updater, /update_runtime_asset_missing/);
+});

@@ -1,0 +1,93 @@
+{
+  "manifest_version": 3,
+  "name": "Codex Overleaf Link — Approved Bridge",
+  "version": "2.3.5",
+  "version_name": "2.3.5 approved-bridge-v3",
+  "description": "Pinned v2.3.5 fork with local approval gates and project-template fingerprint enforcement.",
+  "icons": {
+    "16": "assets/icons/icon16.png",
+    "32": "assets/icons/icon32.png",
+    "48": "assets/icons/icon48.png",
+    "128": "assets/icons/icon128.png"
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAlvUmSiwPTRFSmr9fVJ8HTtlCaYP34o4zrLvqqJV3Ha4+QWQuBTkLmbONvDm7heCh8sDqUzMBA7yPtLu5kGtx85FnHBxWcasgLMmdSfGKcfApVyQGfEJ9WoRYsr1QVG9xTdAmtIa5zdFFHdfLN3OrBgxLDSt2jjpiEZbs9w3VLlsJlVY2y+98L86RywHQzk/l2OEwIJ2Waa7ef0mRnNMQ0k7S1xJNFV5YOMHEc06+OkCg32zJlfGhHY+NVzpxgCYvJEPB/SR2JLLi1U43jvIStCXBZeQ1cT10tXvgwV1F7RPbA9cjelzyamW9yhK3XlyD7TnPiYfvOOYxDByP9s8H7QIDAQAB",
+  "permissions": [
+    "alarms",
+    "nativeMessaging",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://www.overleaf.com/project",
+    "https://overleaf.com/project",
+    "https://www.overleaf.com/project/*",
+    "https://overleaf.com/project/*"
+  ],
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.overleaf.com/project",
+        "https://overleaf.com/project",
+        "https://www.overleaf.com/project/*",
+        "https://overleaf.com/project/*"
+      ],
+      "js": [
+        "src/content/generated/content.bundle.js"
+      ],
+      "css": [
+        "vendor/katex/katex.min.css",
+        "styles/panel.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "assets/icons/codex-overleaf-icon.png",
+        "assets/icons/codex-overleaf-dialog-icon.png",
+        "vendor/katex/fonts/*",
+        "src/shared/reviewing.js",
+        "src/shared/projectFiles.js",
+        "src/shared/compatibility.js",
+        "src/shared/pageRpcContract.js",
+        "src/shared/managedUpdateProjection.js",
+        "src/shared/staleGuard.js",
+        "src/shared/compileAdapter.js",
+        "src/shared/otText.js",
+        "src/shared/sensitiveScan.js",
+        "src/shared/auditRecords.js",
+        "src/page/overleafCapabilities.js",
+        "src/page/saveState.js",
+        "src/page/compileBridge.js",
+        "src/page/overleafEditor.js",
+        "src/page/overleafProjectSnapshot.js",
+        "src/page/overleafRealtimeObserver.js",
+        "src/page/pageBridgeCapability.js",
+        "src/page/treeOperations.js",
+        "src/page/binaryAssetUploader.js",
+        "src/page/snapshotRouter.js",
+        "src/page/writeGuard.js",
+        "src/page/trackedChangesLifecycle.js",
+        "src/page/writebackRouter.js",
+        "src/pageBridge.js"
+      ],
+      "matches": [
+        "https://www.overleaf.com/*",
+        "https://overleaf.com/*"
+      ]
+    }
+  ],
+  "action": {
+    "default_title": "Codex Overleaf Link",
+    "default_icon": {
+      "16": "assets/icons/icon16.png",
+      "32": "assets/icons/icon32.png",
+      "48": "assets/icons/icon48.png",
+      "128": "assets/icons/icon128.png"
+    },
+    "default_popup": "popup.html"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "matches": [
+    "https://www.overleaf.com/project",
+    "https://overleaf.com/project",
+    "https://www.overleaf.com/project/*",
+    "https://overleaf.com/project/*"
+  ],
+  "js": [
+    "src/content/generated/content.bundle.js"
+  ],
+  "css": [
+    "vendor/katex/katex.min.css",
+    "styles/panel.css"
+  ],
+  "runAt": "document_idle"
+}

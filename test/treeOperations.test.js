@@ -1,0 +1,473 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const test = require('node:test');
+const vm = require('node:vm');
+
+const projectFiles = require('../extension/src/shared/projectFiles');
+
+const treeOperationsSource = fs.readFileSync(
+  path.join(__dirname, '../extension/src/page/treeOperations.js'),
+  'utf8'
+);
+
+test('tree operations resolves nested DOM basename nodes through Overleaf doc ids', () => {
+  const rootId = '111111111111111111111111';
+  const nestedId = '222222222222222222222222';
+  const rootNode = makeTreeNode({ label: 'main.tex', docId: rootId, openPath: 'main.tex' });
+  const nestedNode = makeTreeNode({ label: 'main.tex', docId: nestedId, openPath: 'sections/main.tex' });
+  const harness = createTreeOperationsHarness({
+    selectedPath: 'main.tex',
+    nodes: [rootNode, nestedNode],
+    docs: [
+      { path: 'main.tex', id: rootId },
+      { path: 'sections/main.tex', id: nestedId }
+    ]
+  });
+
+  assert.equal(harness.ops.readProjectPathFromNode(nestedNode), 'sections/main.tex');
+});
+
+test('tree operations infers nested basename file paths from folder DOM ancestry', () => {
+  const fileNode = makeDomNode({
+    tagName: 'LI',
+    role: 'treeitem',
+    ariaLabel: 'test.tex',
+    textContent: 'descriptiontest.texmore_vertMenu'
+  });
+  const childList = makeDomNode({
+    tagName: 'UL',
+    role: 'tree',
+    className: 'file-tree-folder-list',
+    children: [fileNode]
+  });
+  const folderNode = makeDomNode({
+    tagName: 'LI',
+    role: 'treeitem',
+    ariaLabel: 'example',
+    textContent: 'expand_moreexample',
+    children: [childList]
+  });
+  const rootNode = makeDomNode({
+    tagName: 'DIV',
+    className: 'file-tree',
+    children: [folderNode]
+  });
+  const harness = createTreeOperationsHarness({
+    selectedPath: 'test.tex',
+    nodes: [rootNode, folderNode, childList, fileNode],
+    docs: []
+  });
+
+  assert.equal(harness.ops.readProjectPathFromNode(fileNode), 'example/test.tex');
+});
+
+test('tree operations infers nested files from Overleaf sibling folder-list DOM', () => {
+  const folderNode = makeDomNode({
+    tagName: 'LI',
+    role: 'treeitem',
+    ariaLabel: 'example',
+    textContent: 'expand_moreexample'
+  });
+  const fileNode = makeDomNode({
+    tagName: 'LI',
+    role: 'treeitem',
+    ariaLabel: 'test.tex',
+    textContent: 'descriptiontest.tex'
+  });
+  const nestedList = makeDomNode({
+    tagName: 'UL',
+    role: 'tree',
+    className: 'list-unstyled file-tree-folder-list',
+    textContent: 'descriptiontest.tex',
+    children: [
+      makeDomNode({
+        tagName: 'DIV',
+        className: 'file-tree-folder-list-inner',
+        textContent: 'descriptiontest.tex',
+        children: [fileNode]
+      })
+    ]
+  });
+  const rootInner = makeDomNode({
+    tagName: 'DIV',
+    className: 'file-tree-folder-list-inner',
+    textContent: 'expand_moreexampledescriptiontest.texdescriptionmain.tex',
+    children: [
+      folderNode,
+      nestedList,
+      makeDomNode({
+        tagName: 'LI',
+        role: 'treeitem',
+        ariaLabel: 'main.tex',
+        textContent: 'descriptionmain.tex'
+      })
+    ]
+  });
+  const rootList = makeDomNode({
+    tagName: 'UL',
+    role: 'tree',
+    className: 'list-unstyled file-tree-folder-list file-tree-list',
+    children: [rootInner]
+  });
+  const rootNode = makeDomNode({
+    tagName: 'DIV',
+    className: 'file-tree',
+    children: [rootList]
+  });
+  const harness = createTreeOperationsHarness({
+    selectedPath: 'main.tex',
+    nodes: [rootNode, rootList, rootInner, folderNode, nestedList, ...nestedList.children, fileNode],
+    docs: []
+  });
+
+  assert.equal(harness.ops.readProjectPathFromNode(fileNode), 'example/test.tex');
+});
+
+test('tree operations ignores selected file-tree containers with multiple file labels', () => {
+  const selectedContainer = makeDomNode({
+    tagName: 'DIV',
+    className: 'selected',
+    textContent: 'exampledescriptiontest.texdescriptiontest2.texdescriptionmain.tex'
+  });
+  selectedContainer.openPath = 'bad-active-tree-container';
+  const harness = createTreeOperationsHarness({
+    selectedPath: 'bad-active-tree-container',
+    nodes: [selectedContainer],
+    docs: []
+  });
+
+  assert.equal(harness.ops.getActiveFilePath(), '');
+});
+
+test('tree operations prefers the recently clicked file when stale selected nodes remain', () => {
+  const mainNode = makeDomNode({
+    tagName: 'LI',
+    role: 'treeitem',
+    ariaLabel: 'main.tex',
+    ariaSelected: 'true',
+    textContent: 'descriptionmain.tex'
+  });
+  mainNode.openPath = 'main.tex';
+  const nestedNode = makeDomNode({
+    tagName: 'LI',
+    role: 'treeitem',
+    ariaLabel: 'test2.tex',
+    ariaSelected: 'true',
+    textContent: 'descriptiontest2.tex'
+  });
+  nestedNode.openPath = 'example/test2.tex';
+  const folderNode = makeDomNode({
+    tagName: 'LI',
+    role: 'treeitem',
+    ariaLabel: 'example',
+    ariaExpanded: 'true',
+    textContent: 'expand_moreexample',
+    children: [nestedNode]
+  });
+  const harness = createTreeOperationsHarness({
+    selectedPath: 'main.tex',
+    nodes: [mainNode, folderNode, nestedNode],
+    docs: [],
+    getActiveEditorIdentity: () => ({ id: 'editor-before' }),
+    activeEditorIdentityChanged: () => true
+  });
+
+  assert.equal(harness.ops.getActiveFilePath(), 'main.tex');
+
+  harness.dispatchWindowClick(nestedNode);
+
+  assert.equal(harness.ops.getActiveFilePath(), 'example/test2.tex');
+});
+
+test('tree operations expands collapsed folders before opening nested files', async () => {
+  const nodes = [];
+  const fileNode = makeDomNode({
+    tagName: 'LI',
+    role: 'treeitem',
+    ariaLabel: 'test.tex',
+    textContent: 'descriptiontest.tex'
+  });
+  fileNode.openPath = 'example/test.tex';
+  const nestedInner = makeDomNode({
+    tagName: 'DIV',
+    className: 'file-tree-folder-list-inner',
+    textContent: 'descriptiontest.tex',
+    children: [fileNode]
+  });
+  const nestedList = makeDomNode({
+    tagName: 'UL',
+    role: 'tree',
+    className: 'list-unstyled file-tree-folder-list',
+    textContent: 'descriptiontest.tex',
+    children: [nestedInner]
+  });
+  const folderNode = makeDomNode({
+    tagName: 'LI',
+    role: 'treeitem',
+    ariaLabel: 'example',
+    ariaExpanded: 'false',
+    textContent: 'chevron_rightexample'
+  });
+  const rootInner = makeDomNode({
+    tagName: 'DIV',
+    className: 'file-tree-folder-list-inner',
+    textContent: 'chevron_rightexample',
+    children: [folderNode]
+  });
+  const rootNode = makeDomNode({
+    tagName: 'DIV',
+    className: 'file-tree',
+    children: [rootInner]
+  });
+  nodes.push(rootNode, rootInner, folderNode);
+  folderNode.onClick = () => {
+    folderNode.attributes['aria-expanded'] = 'true';
+    folderNode.textContent = 'expand_moreexample';
+    rootInner.children = [folderNode, nestedList];
+    nestedList.parentElement = rootInner;
+    nodes.push(nestedList, nestedInner, fileNode);
+  };
+  const harness = createTreeOperationsHarness({
+    selectedPath: 'main.tex',
+    nodes,
+    docs: []
+  });
+
+  const opened = await harness.ops.openFileByPath('example/test.tex');
+
+  assert.equal(opened.ok, true, opened.reason || JSON.stringify(opened));
+  assert.equal(harness.getSelectedPath(), 'example/test.tex');
+  assert.ok(folderNode.clickCount >= 1, 'folder node should be clicked at least once to expand');
+  assert.ok(fileNode.clickCount >= 1, 'file node should be clicked at least once to open');
+});
+
+test('tree operations opens nested files without falling back to a root basename match', async () => {
+  const rootId = '333333333333333333333333';
+  const nestedId = '444444444444444444444444';
+  const rootNode = makeTreeNode({ label: 'main.tex', docId: rootId, openPath: 'main.tex' });
+  const nestedNode = makeTreeNode({ label: 'main.tex', docId: nestedId, openPath: 'sections/main.tex' });
+  const harness = createTreeOperationsHarness({
+    selectedPath: 'main.tex',
+    nodes: [rootNode, nestedNode],
+    docs: [
+      { path: 'main.tex', id: rootId },
+      { path: 'sections/main.tex', id: nestedId }
+    ]
+  });
+
+  const opened = await harness.ops.openFileByPath('sections/main.tex');
+
+  assert.equal(opened.ok, true, opened.reason || JSON.stringify(opened));
+  assert.equal(harness.getSelectedPath(), 'sections/main.tex');
+  assert.equal(rootNode.clickCount, 0);
+  assert.ok(nestedNode.clickCount >= 1, 'nested node should be clicked at least once');
+});
+
+function createTreeOperationsHarness({
+  selectedPath,
+  nodes,
+  docs,
+  getActiveEditorIdentity = () => null,
+  activeEditorIdentityChanged = () => false
+}) {
+  let currentPath = selectedPath;
+  const windowListeners = {};
+  const document = {
+    querySelector(selector) {
+      if (/\[aria-selected="true"\]|\.selected/.test(selector)) {
+        return nodes.find(node => node.openPath === currentPath) || null;
+      }
+      return null;
+    },
+    querySelectorAll(selector) {
+      if (/\[aria-selected="true"\]/.test(selector)) {
+        return nodes.filter(node => node.openPath === currentPath || node.getAttribute?.('aria-selected') === 'true');
+      }
+      if (/\.selected/.test(selector)) {
+        return nodes.filter(node => node.openPath === currentPath || /\bselected\b/.test(String(node.className || '')));
+      }
+      if (/treeitem|role="row"|file-tree|project-tree|data-entity-id|data-doc-id|data-id|data-file-id/.test(selector)) {
+        return nodes;
+      }
+      return [];
+    }
+  };
+  function wrapNodeOnClick(node) {
+    const originalOnClick = node.onClick;
+    node.onClick = () => {
+      originalOnClick?.();
+      if (node.openPath) {
+        currentPath = node.openPath;
+      }
+    };
+  }
+  for (const node of nodes) {
+    wrapNodeOnClick(node);
+  }
+  const originalPush = nodes.push.bind(nodes);
+  nodes.push = (...items) => {
+    for (const item of items) {
+      if (item && typeof item === 'object' && !item.__wrapped) {
+        item.__wrapped = true;
+        wrapNodeOnClick(item);
+      }
+    }
+    return originalPush(...items);
+  };
+  const window = {
+    location: {
+      pathname: '/project/test-project'
+    },
+    document,
+    CodexOverleafProjectFiles: projectFiles,
+    _ide: {
+      rootFolder: buildInternalDocTree(docs)
+    },
+    addEventListener(type, handler) {
+      windowListeners[type] = handler;
+    },
+    removeEventListener(type, handler) {
+      if (windowListeners[type] === handler) {
+        delete windowListeners[type];
+      }
+    },
+    setTimeout,
+    clearTimeout
+  };
+  const context = vm.createContext({
+    window,
+    document,
+    Node: class Node {},
+    EventTarget: class EventTarget {},
+    MouseEvent: class MouseEvent {},
+    setTimeout,
+    clearTimeout,
+    globalThis: window
+  });
+  vm.runInContext(treeOperationsSource, context, { filename: 'treeOperations.js' });
+  const ops = window.CodexOverleafTreeOperations.create({
+    window,
+    document,
+    normalizePath: projectFiles.normalizeSafeProjectPath,
+    getActiveEditorIdentity,
+    activeEditorIdentityChanged,
+    readActiveEditorText: () => 'ready'
+  });
+  return {
+    ops,
+    dispatchWindowClick(target) {
+      windowListeners.click?.({
+        target,
+        isTrusted: true,
+        composedPath: () => [target, ...(target.parentElement ? [target.parentElement] : [])]
+      });
+    },
+    getSelectedPath() {
+      return currentPath;
+    }
+  };
+}
+
+function buildInternalDocTree(docs) {
+  const root = { name: '', folders: [], docs: [] };
+  const folders = new Map([['', root]]);
+  for (const doc of docs) {
+    const parts = doc.path.split('/');
+    const fileName = parts.pop();
+    let folderPath = '';
+    let parent = root;
+    for (const folderName of parts) {
+      folderPath = folderPath ? `${folderPath}/${folderName}` : folderName;
+      if (!folders.has(folderPath)) {
+        const folder = { name: folderName, folders: [], docs: [] };
+        folders.set(folderPath, folder);
+        parent.folders.push(folder);
+      }
+      parent = folders.get(folderPath);
+    }
+    parent.docs.push({ name: fileName, _id: doc.id });
+  }
+  return root;
+}
+
+function makeTreeNode({ label, docId, openPath }) {
+  return {
+    textContent: label,
+    children: [],
+    parentElement: null,
+    openPath,
+    clickCount: 0,
+    getAttribute(attribute) {
+      if (attribute === 'data-name' || attribute === 'aria-label' || attribute === 'title') {
+        return label;
+      }
+      if (attribute === 'data-entity-id' || attribute === 'data-doc-id' || attribute === 'data-id') {
+        return docId;
+      }
+      return '';
+    },
+    dispatchEvent() {
+      this.clickCount += 1;
+      this.onClick?.();
+      return true;
+    }
+  };
+}
+
+function makeDomNode({
+  tagName = 'DIV',
+  role = '',
+  className = '',
+  id = '',
+  ariaLabel = '',
+  ariaExpanded = '',
+  ariaSelected = '',
+  title = '',
+  textContent = '',
+  children = []
+}) {
+  const node = {
+    tagName,
+    className,
+    id,
+    textContent,
+    children,
+    parentElement: null,
+    clickCount: 0,
+    attributes: {
+      'aria-expanded': ariaExpanded,
+      'aria-selected': ariaSelected
+    },
+    getAttribute(attribute) {
+      if (Object.prototype.hasOwnProperty.call(this.attributes, attribute)) {
+        return this.attributes[attribute];
+      }
+      if (attribute === 'role') {
+        return role;
+      }
+      if (attribute === 'class') {
+        return className;
+      }
+      if (attribute === 'id') {
+        return id;
+      }
+      if (attribute === 'aria-label') {
+        return ariaLabel;
+      }
+      if (attribute === 'title') {
+        return title;
+      }
+      return '';
+    },
+    dispatchEvent() {
+      this.clickCount += 1;
+      this.onClick?.();
+      return true;
+    }
+  };
+  for (const child of children) {
+    child.parentElement = node;
+  }
+  return node;
+}

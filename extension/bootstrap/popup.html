@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Codex Overleaf Link</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <h1 class="popup-brand">Codex Overleaf Link</h1>
+    <div class="version-status" data-popup-context>
+      <span id="compat-status-icon" class="status-icon incompatible" title="Native host incompatible">X</span>
+      <span id="version-pair">Extension unknown / Native unknown</span>
+    </div>
+    <button id="open-panel" data-popup-context>Open panel in Overleaf</button>
+    <p id="status" data-popup-context>Use this on an Overleaf project tab.</p>
+    <div id="native-install" class="install" data-popup-context hidden>
+      <strong>Native host attention required</strong>
+      <p>Run this command in Terminal, then reload this extension in Chrome.</p>
+      <code id="install-command"></code>
+      <button id="copy-install-command" class="secondary" type="button">Copy install command</button>
+    </div>
+    <script src="../runtime/src/shared/compatibility.js"></script>
+    <script src="../runtime/src/popup.js"></script>
+    <script src="updateStatus.js"></script>
+  </body>
+</html>

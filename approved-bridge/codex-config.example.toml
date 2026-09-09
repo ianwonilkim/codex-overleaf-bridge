@@ -1,0 +1,37 @@
+# Generic fallback for people who cannot use `codex mcp add`.
+# Replace every /ABSOLUTE/... value. TOML does not expand ~ or $HOME here.
+# For local Mac use port 17381 and the installer-managed runtime/token paths.
+# For SSH use the remote Node/MCP/token paths and that user's assigned remote port.
+# Merge this table into ~/.codex/config.toml; never overwrite unrelated tables.
+
+[mcp_servers.overleaf-approved]
+command = "/ABSOLUTE/PATH/TO/node"
+args = ["/ABSOLUTE/PATH/TO/mcp-server.cjs"]
+env = { OVERLEAF_BRIDGE_URL = "http://127.0.0.1:17381", OVERLEAF_BRIDGE_TOKEN_FILE = "/ABSOLUTE/PATH/TO/overleaf-bridge-token" }
+startup_timeout_sec = 10
+tool_timeout_sec = 180
+enabled = true
+required = false
+default_tools_approval_mode = "writes"
+enabled_tools = ["overleaf_status", "overleaf_connect_project", "overleaf_verify_project_policy", "overleaf_preview_diff", "overleaf_apply_approved", "overleaf_compile", "overleaf_undo"]
+
+[mcp_servers.overleaf-approved.tools.overleaf_status]
+approval_mode = "auto"
+
+[mcp_servers.overleaf-approved.tools.overleaf_connect_project]
+approval_mode = "approve"
+
+[mcp_servers.overleaf-approved.tools.overleaf_verify_project_policy]
+approval_mode = "auto"
+
+[mcp_servers.overleaf-approved.tools.overleaf_preview_diff]
+approval_mode = "auto"
+
+[mcp_servers.overleaf-approved.tools.overleaf_apply_approved]
+approval_mode = "approve"
+
+[mcp_servers.overleaf-approved.tools.overleaf_compile]
+approval_mode = "approve"
+
+[mcp_servers.overleaf-approved.tools.overleaf_undo]
+approval_mode = "approve"

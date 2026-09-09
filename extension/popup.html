@@ -1,0 +1,117 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Codex Overleaf Link</title>
+    <style>
+      body {
+        width: 320px;
+        margin: 0;
+        padding: 14px;
+        color: #1d252c;
+        font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      h1 {
+        margin: 0 0 10px;
+        font-size: 15px;
+      }
+
+      .version-status {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin: 0 0 10px;
+        color: #52616f;
+        font-size: 12px;
+      }
+
+      .status-icon {
+        display: inline-flex;
+        min-width: 24px;
+        min-height: 24px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        color: white;
+        font: 10px/1 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        letter-spacing: 0.02em;
+      }
+
+      .status-icon.compatible {
+        background: #1f7a63;
+      }
+
+      .status-icon.update-available {
+        background: #b66b00;
+      }
+
+      .status-icon.incompatible {
+        background: #b3261e;
+      }
+
+      button {
+        width: 100%;
+        border: 1px solid #1c6b57;
+        background: #1f7a63;
+        color: white;
+        border-radius: 6px;
+        padding: 8px 10px;
+        cursor: pointer;
+      }
+
+      button.secondary {
+        margin-top: 8px;
+        border-color: #c6d0da;
+        background: #f7f9fb;
+        color: #26323c;
+      }
+
+      p {
+        margin: 8px 0 0;
+      }
+
+      .install {
+        margin-top: 12px;
+        padding: 10px;
+        border: 1px solid #d8e0e8;
+        border-radius: 8px;
+        background: #f7f9fb;
+      }
+
+      .install[hidden] {
+        display: none;
+      }
+
+      code {
+        display: block;
+        margin-top: 8px;
+        padding: 8px;
+        overflow: auto;
+        border-radius: 6px;
+        background: #eef2f6;
+        color: #26323c;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font: 11px/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Codex Overleaf Link</h1>
+    <div class="version-status">
+      <span id="compat-status-icon" class="status-icon incompatible" title="Native host incompatible">X</span>
+      <span id="version-pair">Extension unknown / Native unknown</span>
+    </div>
+    <button id="open-panel">Open panel in Overleaf</button>
+    <p id="status">Use this on an Overleaf project tab.</p>
+    <div id="native-install" class="install" hidden>
+      <strong>Native host attention required</strong>
+      <p>Run this command in Terminal, then reload this extension in Chrome.</p>
+      <code id="install-command"></code>
+      <button id="copy-install-command" class="secondary" type="button">Copy install command</button>
+    </div>
+    <script src="src/shared/compatibility.js"></script>
+    <script src="src/popup.js"></script>
+  </body>
+</html>
