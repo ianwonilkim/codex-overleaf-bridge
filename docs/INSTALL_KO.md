@@ -1,5 +1,9 @@
 # 설치·사용 매뉴얼
 
+가장 간단한 방법은 저장소 첫 화면의 `가장 쉬운 설치: Codex에 맡기기` 요청문
+전체를 Codex에 붙여 넣는 것입니다. 직접 설치하거나 각 단계를 확인하려면 아래를
+따릅니다.
+
 ## 1. 준비물
 
 - macOS
@@ -9,6 +13,8 @@
 - 저장소의 ZIP과 SHA256 파일
 
 Codex와 Chrome이 같은 Mac에서 실행되면 SSH는 필요 없습니다.
+Codex CLI를 연구 서버에서 실행하려면 Mac과 서버 양쪽에 Node.js 20 이상이
+필요합니다. Overleaf 탭·Chrome 확장·bridge는 Mac에서 계속 실행합니다.
 
 ## 2. 같은 Mac에서 설치
 
@@ -200,18 +206,28 @@ bash "$HOME/Downloads/codex-overleaf-bridge-kit-20260909-r8/install.command"
 ## 7. Codex가 SSH 연구 서버에서 실행될 때만
 
 Chrome은 Mac에 있고 Codex만 연구 서버에서 실행되는 경우입니다. 같은 Mac 사용자는
-이 절을 건너뜁니다.
+이 절을 건너뜁니다. 서버 단독/headless 설치가 아니라 다음 구성입니다.
+
+```text
+Mac:    Overleaf + Chrome 확장 + bridge(127.0.0.1:17381)
+                                      ↑ SSH reverse tunnel
+Server: Codex CLI + MCP adapter → 127.0.0.1:REMOTE_PORT
+```
+
+Mac과 연구 서버에서 각각 `node --version`이 20 이상인지 확인합니다.
 
 Mac에서 설치할 때 로컬 Codex 등록을 생략합니다.
 
 ```bash
-bash codex-overleaf-bridge-kit-20260909-r8/install.command --skip-codex-mcp
+bash "$HOME/Downloads/codex-overleaf-bridge-kit-20260909-r8/install.command" \
+  --skip-codex-mcp
 ```
 
 그다음 Mac의 MCP 어댑터와 token을 자신의 연구 서버 계정으로 복사하고 reverse
 tunnel을 엽니다. 공유 서버에서는 사용자마다 다른 remote port를 사용합니다.
 
-Mac 터미널:
+Mac 터미널입니다. `SSH_ALIAS`에는 `~/.ssh/config`의 별칭 또는
+`사용자@서버주소`를 넣습니다.
 
 ```bash
 SSH_ALIAS='연구서버_alias'
@@ -224,6 +240,7 @@ scp "$HOME/.codex-overleaf/approved-bridge-v1/token" \
   "$SSH_ALIAS:~/.codex/overleaf-bridge-token"
 
 ssh -NT -o ExitOnForwardFailure=yes \
+  -o ServerAliveInterval=30 -o ServerAliveCountMax=3 \
   -R "127.0.0.1:$REMOTE_PORT:127.0.0.1:17381" "$SSH_ALIAS"
 ```
 
@@ -237,7 +254,10 @@ codex mcp add overleaf-approved \
   -- "$(command -v node)" "$HOME/.codex-overleaf/client/mcp-server.cjs"
 ```
 
-Codex를 다시 시작한 뒤 3절부터 동일하게 사용합니다. token 파일 내용은 화면,
+마지막 `ssh -NT` 터미널은 사용하는 동안 열어 둡니다. Codex를 다시 시작한 뒤
+3절부터 동일하게 사용합니다. 작업 중에는 Mac의 Chrome, 대상 Overleaf 탭, bridge와
+SSH tunnel이 모두 켜져 있어야 합니다. tunnel은 서버의 `127.0.0.1`에만 열고,
+`0.0.0.0`이나 공용 주소로 bridge를 노출하지 않습니다. token 파일 내용은 화면,
 채팅, 메일 또는 Git에 붙여 넣지 않습니다.
 
 ## 8. 문제 해결

@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Documentation
+
+- Added a single copy-and-paste Codex setup request that detects same-Mac and
+  SSH research-server configurations and separates automated checks from the
+  Chrome and tunnel steps that require user action.
+- Moved the complete local, reverse-SSH, update, security, and troubleshooting
+  walkthrough onto the repository front page.
+- Removed personal/team announcement templates from tracked documentation and
+  future distribution-kit builds; sharing copy stays outside the repository.
+
 ## Approved lab bridge v6 - 2026-09-09
 
 ### Added

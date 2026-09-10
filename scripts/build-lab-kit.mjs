@@ -24,7 +24,6 @@ function main() {
   try {
     fs.mkdirSync(path.join(kitRoot, 'installer'), { recursive: true });
     copy('lab-release/README_FIRST_KO.md', 'README_FIRST_KO.md');
-    copy('lab-release/SHARING_GUIDE_KO.md', 'SHARING_GUIDE_KO.md');
     copy('lab-release/install.command', 'install.command');
     fs.chmodSync(path.join(kitRoot, 'install.command'), 0o755);
     copy('APPROVED_BRIDGE_SETUP_KO.md', 'APPROVED_BRIDGE_SETUP_KO.md');
